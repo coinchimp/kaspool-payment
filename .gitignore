@@ -1,0 +1,7 @@
+node_modules/
+storage/
+wasm/
+bun*
+.secrets
+.env
+postgres*
