@@ -2,6 +2,7 @@ import config from "../config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
 import WalletManager from './wallet';
+import cron from 'node-cron';
 
 export let DEBUG = 0;
 if (process.env.DEBUG === "1") {
@@ -32,9 +33,14 @@ if (!databaseUrl) {
 }
 
 (async () => {
-  const walletManager = new WalletManager(config.networkId, treasurySecretPhrase, databaseUrl );
+  const walletManager = new WalletManager(config.networkId, treasurySecretPhrase, databaseUrl);
   await walletManager.init();
-  await walletManager.transferBalances();
 
-  monitoring.log('Main: Finished processing balances');
+  // Schedule the transferBalances method to run every 30 minutes
+  cron.schedule('*/30 * * * *', async () => {
+    monitoring.log('Main: Running scheduled balance transfer');
+    await walletManager.transferBalances();
+  });
+
+  monitoring.log('Main: Scheduled balance transfer every 30 minutes');
 })();
