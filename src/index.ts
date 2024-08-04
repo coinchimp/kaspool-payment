@@ -20,15 +20,15 @@ if (!treasuryPrivateKey) {
 }
 if (DEBUG) monitoring.debug(`Main: Getting private key`);
 
-if (!config.networkId) {
-  throw new Error('No NetworkId has been set in config.json');
+if (!config.network) {
+  throw new Error('No network has been set in config.json');
 }
 
 /*if (!config.node) {
   throw new Error('No node has been set in config.json');
 }*/
 
-if (DEBUG) monitoring.debug(`Main: Getting Network Id: ${config.networkId}`);
+if (DEBUG) monitoring.debug(`Main: Getting Network Id: ${config.network}`);
 
 const kaspoolPshGw = process.env.PUSHGATEWAY;
 if (!kaspoolPshGw) {
@@ -51,7 +51,7 @@ if (DEBUG) monitoring.debug(`Main: Setting up rpc client`);
 const rpc = new RpcClient({
   resolver: new Resolver(),
   encoding: Encoding.Borsh,
-  networkId: config.networkId,
+  networkId: config.network,
 });
 if (DEBUG) monitoring.debug(`Main: Starting rpc connection`);
 await rpc.connect();
@@ -59,7 +59,7 @@ const serverInfo = await rpc.getServerInfo();
 if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) throw Error('Provided node is either not synchronized or lacks the UTXO index.');
 if (DEBUG) monitoring.debug(`Main: RPC connection established`);    
 if (DEBUG) monitoring.debug(`Main: Starting transactionManager`);
-const transactionManager = new trxManager(config.networkId, treasuryPrivateKey, databaseUrl, rpc);
+const transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc);
 
 try {
   await transactionManager.init();
