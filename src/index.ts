@@ -1,4 +1,4 @@
-import config from "../config.json";
+import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
@@ -24,9 +24,9 @@ if (!config.networkId) {
   throw new Error('No NetworkId has been set in config.json');
 }
 
-if (!config.node_cluster) {
-  throw new Error('No node_cluster has been set in config.json');
-}
+/*if (!config.node) {
+  throw new Error('No node has been set in config.json');
+}*/
 
 if (DEBUG) monitoring.debug(`Main: Getting Network Id: ${config.networkId}`);
 
@@ -49,9 +49,7 @@ if (DEBUG) monitoring.debug(`Main: Entering schedule to run every 30 minutes`);
 
 if (DEBUG) monitoring.debug(`Main: Setting up rpc client`);
 const rpc = new RpcClient({
-  resolver: new Resolver({
-    urls: config.node_cluster
-  }),
+  resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: config.networkId,
 });
