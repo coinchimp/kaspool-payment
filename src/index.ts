@@ -70,7 +70,7 @@ cron.schedule('*/30 * * * *', async () => {
   }
 
   if (DEBUG) monitoring.debug(`Main: Starting rpc disconnection`);
-  //await rpc.disconnect();
+  await rpc.disconnect();
 
 });
 monitoring.log('Main: Scheduled balance transfer every 30 minutes');
