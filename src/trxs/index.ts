@@ -22,6 +22,7 @@ export default class trxManager {
     this.db = new Database(databaseUrl);
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
+    if (DEBUG) this.monitoring.debug(`TrxManager: Pool Address: ${this.address}`);
     this.processor = new UtxoProcessor({ rpc, networkId });
     this.context = new UtxoContext({ processor: this.processor });
   }
@@ -58,6 +59,7 @@ export default class trxManager {
 
   async send(outputs: IPaymentOutput[]) {
     console.log(outputs);
+    if (DEBUG) this.monitoring.debug(`TrxManager: Context to be used: ${this.context}`);
     const { transactions, summary } = await createTransactions({
       entries: this.context,
       outputs,
@@ -66,7 +68,9 @@ export default class trxManager {
     });
 
     for (const transaction of transactions) {
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be signed`);
       await transaction.sign([this.privateKey]);
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be submitted`);
       await transaction.submit(this.processor.rpc);
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
       await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
