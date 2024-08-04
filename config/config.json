@@ -1,3 +1,4 @@
 {
-    "network" : "testnet-11"
+    "network" : "testnet-11",
+    "paymentInterval": 2
 }
