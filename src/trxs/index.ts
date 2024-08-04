@@ -25,6 +25,7 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Pool Address: ${this.address}`);
     this.processor = new UtxoProcessor({ rpc, networkId });
     this.context = new UtxoContext({ processor: this.processor });
+    this.registerProcessor()
   }
 
   async init() {
@@ -75,7 +76,14 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
       await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
     }
-
+    if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
     return summary.finalTransactionId;
   }
+  private registerProcessor () {
+    this.processor.addEventListener("utxo-proc-start", async () => {
+      await this.context.clear()
+      await this.context.trackAddresses([ this.address ])
+    })
+    this.processor.start()
+  }  
 }
