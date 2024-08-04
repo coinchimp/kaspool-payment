@@ -28,10 +28,6 @@ export default class trxManager {
     this.registerProcessor()
   }
 
-  async init() {
-    this.monitoring.log('TrxManager: Manager initialized');
-  }
-
   async transferBalances() {
     const balances = await this.db.getAllBalancesExcludingPool();
     let payments: IPaymentOutput[] = [];
@@ -44,9 +40,6 @@ export default class trxManager {
           address: address,
           amount: balance
         });
-
-        await this.db.resetBalanceByAddress(address);
-        this.monitoring.log(`TrxManager: Reset balance for address ${address}`);
       }
     }
 
@@ -56,6 +49,17 @@ export default class trxManager {
 
     const transactionId = await this.send(payments);
     this.monitoring.log(`TrxManager: Sent payments. Transaction ID: ${transactionId}`);
+
+    if (transactionId) {
+      for (const { address, balance } of balances) {
+      if (balance > 0) {
+        await this.db.resetBalanceByAddress(address);
+        this.monitoring.log(`TrxManager: Reset balance for address ${address}`);
+      
+        }
+      }
+    }
+
   }
 
   async send(outputs: IPaymentOutput[]) {
@@ -76,12 +80,18 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
       await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
     }
+
     if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
     return summary.finalTransactionId;
+
   }
+
+
   private registerProcessor () {
     this.processor.addEventListener("utxo-proc-start", async () => {
+      if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
       await this.context.clear()
+      if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - tracking pool address`);
       await this.context.trackAddresses([ this.address ])
     })
     this.processor.start()
