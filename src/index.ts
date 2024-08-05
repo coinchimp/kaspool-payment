@@ -80,6 +80,7 @@ const startRpcConnection = async () => {
   }
   rpcConnected = true;
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
+  setupTransactionManager();
 };
 
 const stopRpcConnection = async () => {
@@ -96,22 +97,23 @@ const setupTransactionManager = () => {
   transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
 };
 
-// Schedule RPC connection 10 minutes before balance transfer
+// Unified cron schedule
 cron.schedule(`*/10 * * * *`, async () => {
   const now = new Date();
   const minutes = now.getMinutes();
-  if (minutes % paymentInterval === (paymentInterval * 60 - 10)) {
-    if (!rpcConnected) {
-      await startRpcConnection();
-      if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
-    }
-  }
-});
+  const hours = now.getHours();
 
-// Schedule balance transfer
-cron.schedule(`0 0 */${paymentInterval} * * *`, async () => {
-  if (rpcConnected) {
-    setupTransactionManager();
+  // Determine if it's 10 minutes before the payment interval
+  const isTenMinutesBefore = minutes === 50 && (hours % paymentInterval === paymentInterval - 1);
+  // Determine if it's the payment interval time
+  const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
+
+  if (isTenMinutesBefore && !rpcConnected) {
+    await startRpcConnection();
+    if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
+  }
+
+  if (isPaymentTime && rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
@@ -121,12 +123,10 @@ cron.schedule(`0 0 */${paymentInterval} * * *`, async () => {
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
-  } else {
+  } else if (isPaymentTime && !rpcConnected) {
     monitoring.error('Main: RPC connection is not established before balance transfer');
   }
 });
-
-monitoring.log(`Main: Scheduled balance transfer every ${paymentInterval} hours`);
 
 // Progress indicator logging every 10 minutes
 setInterval(() => {
@@ -136,3 +136,5 @@ setInterval(() => {
   const remainingTime = remainingMinutes === paymentInterval * 60 ? 0 : remainingMinutes;
   if (DEBUG) monitoring.debug(`Main: ${remainingTime} minutes until the next balance transfer`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
+
+monitoring.log(`Main: Scheduled balance transfer every ${paymentInterval} hours`);
