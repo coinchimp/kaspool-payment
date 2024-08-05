@@ -66,6 +66,8 @@ const startRpcConnection = async () => {
   const resolverOptions = config.node ? { urls: config.node } : undefined;
   const resolver = new Resolver(resolverOptions);
 
+  if (DEBUG) monitoring.debug(`Main: Resolver(${resolverOptions})`);
+
   rpc = new RpcClient({
     resolver: resolver,
     encoding: Encoding.Borsh,
@@ -73,7 +75,11 @@ const startRpcConnection = async () => {
   });
 
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
-  await rpc.connect();
+  try {
+    await rpc.connect();
+  } catch (rpcError) {
+    throw Error('RPC connection error');
+  }
   const serverInfo = await rpc.getServerInfo();
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
     throw Error('Provided node is either not synchronized or lacks the UTXO index.');
@@ -132,8 +138,12 @@ cron.schedule(`*/10 * * * *`, async () => {
 setInterval(() => {
   const now = new Date();
   const minutes = now.getMinutes();
-  const remainingMinutes = paymentInterval * 60 - (minutes % (paymentInterval * 60));
-  const remainingTime = remainingMinutes === paymentInterval * 60 ? 0 : remainingMinutes;
+  const hours = now.getHours();
+
+  const nextTransferHours = paymentInterval - (hours % paymentInterval);
+  const remainingMinutes = nextTransferHours * 60 - minutes;
+  const remainingTime = remainingMinutes === nextTransferHours * 60 ? 0 : remainingMinutes;
+
   if (DEBUG) monitoring.debug(`Main: ${remainingTime} minutes until the next balance transfer`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
 

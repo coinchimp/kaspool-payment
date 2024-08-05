@@ -1,5 +1,3 @@
-// @ts-ignore
-//globalThis.WebSocket = require('websocket').w3cwebsocket; // W3C WebSocket module shim
 import Database from '../database';
 import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
