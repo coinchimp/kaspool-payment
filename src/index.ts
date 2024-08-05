@@ -56,24 +56,23 @@ if (paymentInterval < 1 || paymentInterval > 24) {
 if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} hours`);
 
 // Type annotations
-let rpc: RpcClient | null = null;
+if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
+const resolverOptions = config.node ? { urls: config.node } : undefined;
+const resolver = new Resolver(resolverOptions);
+
+if (DEBUG) {
+  monitoring.debug(`Main: Resolver Options:`);
+  console.log(resolverOptions)
+}
+const rpc = new RpcClient({
+  resolver: resolver,
+  encoding: Encoding.Borsh,
+  networkId: config.network,
+});
 let transactionManager: trxManager | null = null;
 let rpcConnected = false;
 
 const startRpcConnection = async () => {
-  if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-
-  const resolverOptions = config.node ? { urls: config.node } : undefined;
-  const resolver = new Resolver(resolverOptions);
-
-  if (DEBUG) monitoring.debug(`Main: Resolver(${resolverOptions})`);
-
-  rpc = new RpcClient({
-    resolver: resolver,
-    encoding: Encoding.Borsh,
-    networkId: config.network,
-  });
-
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
   try {
     await rpc.connect();
