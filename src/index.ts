@@ -65,7 +65,8 @@ if (DEBUG) {
   console.log(resolverOptions)
 }
 const rpc = new RpcClient({
-  resolver: resolver,
+  //resolver: resolver,
+  resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: config.network,
 });
