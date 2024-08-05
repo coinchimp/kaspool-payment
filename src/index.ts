@@ -58,11 +58,16 @@ if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} ho
 // Type annotations
 let rpc: RpcClient | null = null;
 let transactionManager: trxManager | null = null;
+let rpcConnected = false;
 
 const startRpcConnection = async () => {
   if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
+
+  const resolverOptions = config.node ? { urls: config.node } : undefined;
+  const resolver = new Resolver(resolverOptions);
+
   rpc = new RpcClient({
-    resolver: new Resolver(),
+    resolver: resolver,
     encoding: Encoding.Borsh,
     networkId: config.network,
   });
@@ -73,12 +78,14 @@ const startRpcConnection = async () => {
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
     throw Error('Provided node is either not synchronized or lacks the UTXO index.');
   }
+  rpcConnected = true;
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
 };
 
 const stopRpcConnection = async () => {
   if (rpc) {
     await rpc.disconnect();
+    rpcConnected = false;
     if (DEBUG) monitoring.debug(`Main: RPC connection closed`);
   }
 };
@@ -89,28 +96,37 @@ const setupTransactionManager = () => {
   transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
 };
 
+// Schedule RPC connection 10 minutes before balance transfer
+cron.schedule(`*/10 * * * *`, async () => {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  if (minutes % paymentInterval === (paymentInterval * 60 - 10)) {
+    if (!rpcConnected) {
+      await startRpcConnection();
+      if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
+    }
+  }
+});
+
 // Schedule balance transfer
 cron.schedule(`0 0 */${paymentInterval} * * *`, async () => {
-  try {
-    await startRpcConnection();
+  if (rpcConnected) {
     setupTransactionManager();
     monitoring.log('Main: Running scheduled balance transfer');
-    await transactionManager!.transferBalances();
-    setTimeout(async () => {
-      await stopRpcConnection();
-    }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
-  } catch (transactionError) {
-    monitoring.error(`Main: Transaction manager error: ${transactionError}`);
+    try {
+      await transactionManager!.transferBalances();
+      setTimeout(async () => {
+        await stopRpcConnection();
+      }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
+    } catch (transactionError) {
+      monitoring.error(`Main: Transaction manager error: ${transactionError}`);
+    }
+  } else {
+    monitoring.error('Main: RPC connection is not established before balance transfer');
   }
 });
 
 monitoring.log(`Main: Scheduled balance transfer every ${paymentInterval} hours`);
-
-// RPC connection 10 minutes before balance transfer
-cron.schedule(`50 59 */${paymentInterval-1} * * *`, async () => {
-  await startRpcConnection();
-  if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
-});
 
 // Progress indicator logging every 10 minutes
 setInterval(() => {
