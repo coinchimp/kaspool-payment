@@ -6,7 +6,7 @@
  * every 10 minutes.
  */
 
-import { RpcClient, Encoding, Resolver } from "../wasm/kaspa-dev";
+import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
 import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
@@ -91,14 +91,20 @@ const startRpcConnection = async () => {
   setupTransactionManager();
 };
 
-const stopRpcConnection = async () => {
-  if (rpc) {
-    await transactionManager!.stopProcessor();
-    await rpc.disconnect();
-    rpcConnected = false;
-    if (DEBUG) monitoring.debug(`Main: RPC connection closed`);
-  }
-};
+if (!rpcConnected) {
+  await startRpcConnection();
+  if (DEBUG) monitoring.debug('Main: RPC connection started');
+}
+
+
+// const stopRpcConnection = async () => {
+//   if (rpc) {
+//     await transactionManager!.stopProcessor();
+//     await rpc.disconnect();
+//     rpcConnected = false;
+//     if (DEBUG) monitoring.debug(`Main: RPC connection closed`);
+//   }
+// };
 
 // Transaction Manager setup
 const setupTransactionManager = () => {
@@ -113,22 +119,22 @@ cron.schedule(`*/10 * * * *`, async () => {
   const hours = now.getHours();
 
   // Determine if it's 10 minutes before the payment interval
-  const isTenMinutesBefore = minutes === 50 && (hours % paymentInterval === paymentInterval - 1);
+  //const isTenMinutesBefore = minutes === 50 && (hours % paymentInterval === paymentInterval - 1);
   // Determine if it's the payment interval time
   const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
 
-  if (isTenMinutesBefore && !rpcConnected) {
-    await startRpcConnection();
-    if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
-  }
+  // if (isTenMinutesBefore && !rpcConnected) {
+  //   await startRpcConnection();
+  //   if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
+  // }
 
   if (isPaymentTime && rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
-      setTimeout(async () => {
-        await stopRpcConnection();
-      }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
+//      setTimeout(async () => {
+//       await stopRpcConnection();
+//      }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }

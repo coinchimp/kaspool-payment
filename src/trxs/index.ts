@@ -1,5 +1,5 @@
 import Database from '../database';
-import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa-dev";
+import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 
@@ -95,9 +95,9 @@ export default class trxManager {
     this.processor.start()
   }  
 
-  stopProcessor () {
-    this.processor.stop()
-  }  
+  // stopProcessor () {
+  //   this.processor.stop()
+  // }  
 
 
 }
