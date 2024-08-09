@@ -75,6 +75,12 @@ const rpc = new RpcClient({
 let transactionManager: trxManager | null = null;
 let rpcConnected = false;
 
+// Transaction Manager setup
+const setupTransactionManager = () => {
+  if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
+  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
+};
+
 const startRpcConnection = async () => {
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
   try {
@@ -87,14 +93,16 @@ const startRpcConnection = async () => {
     throw Error('Provided node is either not synchronized or lacks the UTXO index.');
   }
   rpcConnected = true;
-  if (DEBUG) monitoring.debug(`Main: RPC connection established`);
-  setupTransactionManager();
+
 };
 
 if (!rpcConnected) {
   await startRpcConnection();
   if (DEBUG) monitoring.debug('Main: RPC connection started');
+  if (DEBUG) monitoring.debug(`Main: RPC connection established`);
+  setupTransactionManager();
 }
+
 
 
 // const stopRpcConnection = async () => {
@@ -106,11 +114,7 @@ if (!rpcConnected) {
 //   }
 // };
 
-// Transaction Manager setup
-const setupTransactionManager = () => {
-  if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
-  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
-};
+
 
 // Unified cron schedule
 cron.schedule(`*/10 * * * *`, async () => {
