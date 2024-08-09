@@ -57,16 +57,18 @@ if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} ho
 
 // Type annotations
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-const resolverOptions = config.node ? { urls: config.node } : undefined;
-const resolver = new Resolver(resolverOptions);
+//const resolverOptions = config.node ? { urls: config.node } : undefined;
+//const resolver = new Resolver(resolverOptions);
 
 if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:`);
-  console.log(resolverOptions)
+  //console.log(resolverOptions)
 }
 const rpc = new RpcClient({
   //resolver: resolver,
-  resolver: new Resolver(),
+  resolver: new Resolver({
+    urls: config.node
+  }),
   encoding: Encoding.Borsh,
   networkId: config.network,
 });
