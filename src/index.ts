@@ -91,6 +91,7 @@ const startRpcConnection = async () => {
 
 const stopRpcConnection = async () => {
   if (rpc) {
+    await transactionManager!.stopProcessor();
     await rpc.disconnect();
     rpcConnected = false;
     if (DEBUG) monitoring.debug(`Main: RPC connection closed`);

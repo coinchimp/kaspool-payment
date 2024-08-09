@@ -94,4 +94,10 @@ export default class trxManager {
     })
     this.processor.start()
   }  
+
+  stopProcessor () {
+    this.processor.stop()
+  }  
+
+
 }
