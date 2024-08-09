@@ -1,5 +1,5 @@
 import Database from '../database';
-import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
+import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa-dev";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 

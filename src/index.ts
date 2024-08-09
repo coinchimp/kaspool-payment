@@ -6,7 +6,7 @@
  * every 10 minutes.
  */
 
-import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
+import { RpcClient, Encoding, Resolver } from "../wasm/kaspa-dev";
 import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
