@@ -55,71 +55,66 @@ if (paymentInterval < 1 || paymentInterval > 24) {
 }
 if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} hours`);
 
-// Type annotations
-let rpc: RpcClient | null = null;
+
+if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
+
+
+if (DEBUG) {
+  monitoring.debug(`Main: Resolver Options:`);
+
+}
+const rpc = new RpcClient({
+
+  resolver: new Resolver({
+    urls: config.node
+  }),
+  encoding: Encoding.Borsh,
+  networkId: config.network,
+});
 let transactionManager: trxManager | null = null;
 let rpcConnected = false;
 
-const startRpcConnection = async () => {
-  if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-
-  const resolverOptions = config.node ? { urls: config.node } : undefined;
-  const resolver = new Resolver(resolverOptions);
-
-  rpc = new RpcClient({
-    resolver: resolver,
-    encoding: Encoding.Borsh,
-    networkId: config.network,
-  });
-
-  if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
-  await rpc.connect();
-  const serverInfo = await rpc.getServerInfo();
-  if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
-    throw Error('Provided node is either not synchronized or lacks the UTXO index.');
-  }
-  rpcConnected = true;
-  if (DEBUG) monitoring.debug(`Main: RPC connection established`);
-  setupTransactionManager();
-};
-
-const stopRpcConnection = async () => {
-  if (rpc) {
-    await rpc.disconnect();
-    rpcConnected = false;
-    if (DEBUG) monitoring.debug(`Main: RPC connection closed`);
-  }
-};
-
-// Transaction Manager setup
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
   transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
 };
 
-// Unified cron schedule
+const startRpcConnection = async () => {
+  if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
+  try {
+    await rpc.connect();
+  } catch (rpcError) {
+    throw Error('RPC connection error');
+  }
+  const serverInfo = await rpc.getServerInfo();
+  if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
+    throw Error('Provided node is either not synchronized or lacks the UTXO index.');
+  }
+  rpcConnected = true;
+
+};
+
+if (!rpcConnected) {
+  await startRpcConnection();
+  if (DEBUG) monitoring.debug('Main: RPC connection started');
+  if (DEBUG) monitoring.debug(`Main: RPC connection established`);
+  setupTransactionManager();
+}
+
+
 cron.schedule(`*/10 * * * *`, async () => {
   const now = new Date();
   const minutes = now.getMinutes();
   const hours = now.getHours();
 
-  // Determine if it's 10 minutes before the payment interval
-  const isTenMinutesBefore = minutes === 50 && (hours % paymentInterval === paymentInterval - 1);
-  // Determine if it's the payment interval time
   const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
 
-  if (isTenMinutesBefore && !rpcConnected) {
-    await startRpcConnection();
-    if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
-  }
 
   if (isPaymentTime && rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
-      setTimeout(async () => {
-        await stopRpcConnection();
-      }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
+
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
@@ -132,8 +127,12 @@ cron.schedule(`*/10 * * * *`, async () => {
 setInterval(() => {
   const now = new Date();
   const minutes = now.getMinutes();
-  const remainingMinutes = paymentInterval * 60 - (minutes % (paymentInterval * 60));
-  const remainingTime = remainingMinutes === paymentInterval * 60 ? 0 : remainingMinutes;
+  const hours = now.getHours();
+
+  const nextTransferHours = paymentInterval - (hours % paymentInterval);
+  const remainingMinutes = nextTransferHours * 60 - minutes;
+  const remainingTime = remainingMinutes === nextTransferHours * 60 ? 0 : remainingMinutes;
+
   if (DEBUG) monitoring.debug(`Main: ${remainingTime} minutes until the next balance transfer`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
