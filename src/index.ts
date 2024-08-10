@@ -55,17 +55,16 @@ if (paymentInterval < 1 || paymentInterval > 24) {
 }
 if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} hours`);
 
-// Type annotations
+
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-//const resolverOptions = config.node ? { urls: config.node } : undefined;
-//const resolver = new Resolver(resolverOptions);
+
 
 if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:`);
-  //console.log(resolverOptions)
+
 }
 const rpc = new RpcClient({
-  //resolver: resolver,
+
   resolver: new Resolver({
     urls: config.node
   }),
@@ -75,7 +74,6 @@ const rpc = new RpcClient({
 let transactionManager: trxManager | null = null;
 let rpcConnected = false;
 
-// Transaction Manager setup
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
   transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
@@ -104,41 +102,19 @@ if (!rpcConnected) {
 }
 
 
-
-// const stopRpcConnection = async () => {
-//   if (rpc) {
-//     await transactionManager!.stopProcessor();
-//     await rpc.disconnect();
-//     rpcConnected = false;
-//     if (DEBUG) monitoring.debug(`Main: RPC connection closed`);
-//   }
-// };
-
-
-
-// Unified cron schedule
 cron.schedule(`*/10 * * * *`, async () => {
   const now = new Date();
   const minutes = now.getMinutes();
   const hours = now.getHours();
 
-  // Determine if it's 10 minutes before the payment interval
-  //const isTenMinutesBefore = minutes === 50 && (hours % paymentInterval === paymentInterval - 1);
-  // Determine if it's the payment interval time
   const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
 
-  // if (isTenMinutesBefore && !rpcConnected) {
-  //   await startRpcConnection();
-  //   if (DEBUG) monitoring.debug('Main: RPC connection started 10 minutes before balance transfer');
-  // }
 
   if (isPaymentTime && rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
-//      setTimeout(async () => {
-//       await stopRpcConnection();
-//      }, 10 * 60 * 1000); // Disconnect 10 minutes after transaction
+
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
