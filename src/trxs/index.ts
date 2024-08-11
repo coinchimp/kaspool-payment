@@ -1,9 +1,10 @@
+import { EventEmitter } from 'events'
 import Database from '../database';
 import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 
-export default class trxManager {
+export default class trxManager extends EventEmitter {
   private networkId: string;
   private privateKey: PrivateKey;
   private address: string;
@@ -14,6 +15,7 @@ export default class trxManager {
 
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
+    super()
     this.monitoring = new Monitoring();
     this.networkId = networkId;
     if (DEBUG) this.monitoring.debug(`TrxManager: Network ID is: ${this.networkId}`);
@@ -71,12 +73,14 @@ export default class trxManager {
     });
 
     for (const transaction of transactions) {
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be signed`);
-      await transaction.sign([this.privateKey]);
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be submitted`);
-      await transaction.submit(this.processor.rpc);
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
-      await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be signed`);
+      transaction.sign([this.privateKey]);
+      this.on('time-to-submit', () => {
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be submitted`);
+      transaction.submit(this.processor.rpc);
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} submitted`);
+      //await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
+      })
     }
 
     if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
@@ -92,12 +96,13 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - tracking pool address`);
       await this.context.trackAddresses([ this.address ])
     })
+
+    this.processor.addEventListener('maturity', () => {
+      if (DEBUG) this.monitoring.debug(`TrxManager: maturity event`)
+      this.emit('time-to-submit') 
+    })
+
     this.processor.start()
   }  
-
-  // stopProcessor () {
-  //   this.processor.stop()
-  // }  
-
 
 }

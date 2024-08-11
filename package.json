@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "events": "^3.3.0",
     "node-cron": "^3.0.3",
     "p-queue": "^8.0.1",
     "pg": "^8.12.0"
