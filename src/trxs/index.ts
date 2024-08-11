@@ -65,28 +65,46 @@ export default class trxManager extends EventEmitter {
   async send(outputs: IPaymentOutput[]) {
     console.log(outputs);
     if (DEBUG) this.monitoring.debug(`TrxManager: Context to be used: ${this.context}`);
+    
     const { transactions, summary } = await createTransactions({
       entries: this.context,
       outputs,
       changeAddress: this.address,
       priorityFee: 0n
     });
-
-    for (const transaction of transactions) {
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be signed`);
-      transaction.sign([this.privateKey]);
-      this.on('time-to-submit', () => {
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be submitted`);
-      transaction.submit(this.processor.rpc);
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} submitted`);
-      //await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
-      })
+  
+    // Handle the first transaction immediately
+    if (transactions.length > 0) {
+      const firstTransaction = transactions[0];
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${firstTransaction.id} to be signed and submitted`);
+      
+      firstTransaction.sign([this.privateKey]);
+      firstTransaction.submit(this.processor.rpc);
+      
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${firstTransaction.id} submitted`);
     }
-
+  
+    // Handle the remaining transactions, waiting for the `time-to-submit` event
+    for (let i = 1; i < transactions.length; i++) {
+      const transaction = transactions[i];
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be signed`);
+  
+      transaction.sign([this.privateKey]);
+  
+      await new Promise<void>((resolve) => {
+        this.once('time-to-submit', () => {
+          if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} to be submitted`);
+          transaction.submit(this.processor.rpc);
+          if (DEBUG) this.monitoring.debug(`TrxManager: Payment with transaction ID: ${transaction.id} submitted`);
+          resolve();
+        });
+      });
+    }
+  
     if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
     return summary.finalTransactionId;
-
   }
+  
 
 
   private registerProcessor () {
