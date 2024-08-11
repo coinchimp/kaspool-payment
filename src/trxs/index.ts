@@ -98,7 +98,7 @@ export default class trxManager extends EventEmitter {
     })
 
     this.processor.addEventListener('maturity', () => {
-      if (DEBUG) this.monitoring.debug(`TrxManager: maturity event`)
+      //if (DEBUG) this.monitoring.debug(`TrxManager: maturity event`)
       this.emit('time-to-submit') 
     })
 
